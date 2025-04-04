@@ -23,7 +23,7 @@ By providing an organized index, `Project Indexer` enhances the LLM's understand
 
 ## Features
 
-- **Creates a **``** file** listing class names and file locations.
+- **Creates a **.json  file** listing class names, methods and locations.
 - **Lightweight**: Only indexes names and locations, not full class properties or implementations.
 - **Supports integration with RooCode**: In some cases, you can configure `Code/Architect` mode to frequently refer to `ProjectIndex.json`. You may also set it to **run **``** periodically** upon reaching milestones or creating new tasks.
 
