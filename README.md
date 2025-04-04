@@ -31,12 +31,14 @@ By providing an organized index, `Project Indexer` enhances the LLM's understand
 
 ## Installation & Usage
 
+Open the Project_Indexer.py File on line 54, change the Path to your Projects Root Location
+
  1. Drop `Project_Indexer.py` into the root of your project.
 
- 2. Run the script via the command line:
+ 2. Run the script via the command line - in the root of your Project. :
 
 ```sh
-python ProjectIndexer.py
+python Project_Indexer.py
 ```
 
  3. The script will generate `ProjectIndex.json`.
