@@ -31,7 +31,7 @@ By providing an organized index, `Project Indexer` enhances the LLM's understand
 
 ## Installation & Usage
 
- 1. Drop `ProjectIndexer.py` into the root of your project.
+ 1. Drop `Project_Indexer.py` into the root of your project.
 
  2. Run the script via the command line:
 
