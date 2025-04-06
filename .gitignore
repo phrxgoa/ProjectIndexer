@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Project Specific  
+ProjectIndex.json
+
+# IDEs and Editors
+.vscode/
+.idea/
+
+# Virtual Environment  
+venv/
+
+# roo code
+memory-bank/

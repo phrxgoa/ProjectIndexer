@@ -1,4 +1,3 @@
-
 # Project Indexer
 
 ## Overview
@@ -7,7 +6,15 @@
 
 By providing an organized index, `Project Indexer` enhances the LLM's understanding from the outset. When combined with a **well-structured design document** containing patterns and examples, it facilitates **efficient onboarding** for new tasks or ongoing development in an active codebase.
 
-It works with C#, becuse thats what i use, so the Regex is set for this, but changing the Regex should enable you to Work with other programing files. 
+The tool currently supports both C# and Python files, with specialized regex patterns for each language's syntax. The index includes:
+
+- For C#: classes, structs, interfaces, enums, and methods
+- For Python:
+  - Classes (including decorated classes)
+  - Functions (including decorated functions)
+  - Methods (instance, class and static methods)
+  - Imports (absolute and relative)
+  - Docstrings (as metadata)
 
 ## Why Use ProjectIndexer?
 
@@ -15,7 +22,7 @@ It works with C#, becuse thats what i use, so the Regex is set for this, but cha
 - **Prevents hallucinations**: Helps LLMs recognize what exists in the codebase.
 - **Speeds up development**: Ideal for large projects with many files and classes.
 - **Compatible with multiple LLMs**, including:
-  - RooCode - the Awasome VSCode AI Developement Extension. 
+  - RooCode - the Awesome VSCode AI Developement Extension.
   - Gemini (All)
   - Sonnet (All)
   - o3-mini and o3-mini-high
@@ -25,31 +32,55 @@ It works with C#, becuse thats what i use, so the Regex is set for this, but cha
 
 ## Features
 
-- **Creates** a **.json  file** listing class names, methods and locations.
-- **Lightweight**: Only indexes names and locations, not full class properties or implementations.
-- **Supports integration with RooCode**: In some cases, you can configure `Code/Architect` mode to frequently refer to `ProjectIndex.json`. You may also set it to **run **``** periodically** upon reaching milestones or creating new tasks.
+- **Creates** a **.json file** listing class names, methods and locations
+- **Multi-language support**: Works with both C# and Python codebases
+- **Lightweight**: Only indexes names and locations, not full class properties or implementations
+- **Supports integration with RooCode**: In some cases, you can configure `Code/Architect` mode to frequently refer to `ProjectIndex.json`. You may also set it to **run periodically** upon reaching milestones or creating new tasks
 
 > **Note:** This tool was built for personal use due to managing a **VS Solution with 5 projects and over 600 classes/methods**.
 
+## Parser Architecture
+
+The project uses a modular parser system:
+
+- `parser/__init__.py`: Main parser interface
+- `parser/csharp_parser.py`: Handles C# specific parsing
+- `parser/python_parser.py`: Handles Python specific parsing
+
+Each parser implements:
+
+- File extension detection
+- Language-specific regex patterns
+- Common output format (JSON)
+
 ## Installation & Usage
 
-Open the Project_Indexer.py File on line 54, change the Path to your Projects Root Location
+1. Drop `Project_Indexer.py` into the root of your project
 
- 1. Drop `Project_Indexer.py` into the root of your project.
+2. Configure the root directory:
 
- 2. Run the script via the command line - in the root of your Project. :
+   - Open `Project_Indexer.py`
+   - On line 54, set `root_directory` to your project's root path
+   - Example for Windows: `"C:\\MyProject"`
+   - Example for Mac/Linux: `"/Users/name/MyProject"`
+
+3. Run the script via command line:
 
 ```sh
+# Using --path argument to specify project directory
+python Project_Indexer.py --path /path/to/your/project
+
+# Without arguments (uses hardcoded path in script)
 python Project_Indexer.py
 ```
 
- 3. The script will generate `ProjectIndex.json`.
+3.  The script will generate `ProjectIndex.json`.
 
- 4. Direct your LLM to read `ProjectIndex.json` for efficient project awareness.
+4.  Direct your LLM to read `ProjectIndex.json` for efficient project awareness.
 
-I hope this is Usefull.
+I hope this is useful.
 
-Happy coding! 
+Happy coding!
 
 ## Contributing
 
@@ -60,5 +91,3 @@ Feel free to fork the repository and submit pull requests for improvements!
 This project is licensed under the [MIT License](LICENSE).
 
 ---
-
-
