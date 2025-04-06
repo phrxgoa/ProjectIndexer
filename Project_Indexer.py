@@ -3,7 +3,7 @@ import json
 import argparse
 from parser.parser import extract_types_and_members_from_file_for_csharp, extract_types_and_members_from_file_for_python
 
-def index_project_structure(root_dir: str):
+def index_project_structure(root_dir: str, extract_imports: bool = False):
     """
     Walks through the directory tree starting at root_dir.
     Extracts type definitions and members from each C# or Python file and creates a structured index.
@@ -25,7 +25,7 @@ def index_project_structure(root_dir: str):
                 details = extract_types_and_members_from_file_for_csharp(file_path)
             elif file.endswith('.py'):
                 # Extract Python types and members
-                details = extract_types_and_members_from_file_for_python(file_path)
+                details = extract_types_and_members_from_file_for_python(file_path, extract_imports)
             print(f"Extracted details from {file}: {details}")
             # Include in the index only if any type or member was found
             project_index_details = details.__to_dict__()
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     # Check if a path argument is provided 
     parser = argparse.ArgumentParser(description='Index project structure for C# and Python files.')
     parser.add_argument('--path', type=str, help='Path to the project directory to index')
+    parser.add_argument('--imports', action='store_true', help='Extract imports from Python files', default=False)
     args = parser.parse_args()
     if args.path:
         root_directory = args.path
@@ -51,7 +52,7 @@ if __name__ == "__main__":
         print(f"Provided path is not a directory: {root_directory}")
         exit(1)
     # Index the project structure starting at the specified root directory  
-    index = index_project_structure(root_directory)
+    index = index_project_structure(root_directory, args.imports)
     # Export file renamed to ProjectIndex.json
     export_filename = 'ProjectIndex.json'
     with open(export_filename, 'w', encoding='utf-8') as index_file:

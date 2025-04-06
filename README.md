@@ -69,7 +69,8 @@ Each parser implements:
 ```sh
 # Using --path argument to specify project directory
 python Project_Indexer.py --path /path/to/your/project
-
+# Using --imports to specify extracting imported libraries/methods in each file (only supported for python right now)
+python Project_Indexer.py --path /path/to/your/project --imports
 # Without arguments (uses hardcoded path in script)
 python Project_Indexer.py
 ```
