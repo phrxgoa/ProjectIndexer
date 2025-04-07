@@ -44,7 +44,6 @@ class C_Sharp_Result:
         self.structs = []
         self.interfaces = []
         self.enums = []
-        self.methods = []  # Flat list for backward compatibility
         
     def __to_dict__(self):
         result = {}
@@ -56,8 +55,6 @@ class C_Sharp_Result:
             result['interfaces'] = self.interfaces
         if self.enums:
             result['enums'] = self.enums
-        if self.methods:
-            result['methods'] = self.methods  # Maintain flat list
         return result
     
 def process_method_node(method_node):
@@ -150,7 +147,6 @@ def _process_class(struct_node, method_query, result):
         method_node = method_nodes_dict['method_def'][0]
         method_info = process_method_node(method_node)
         methods.append(method_info)
-        result.methods.append(method_info)
         
     if methods:
         class_info['methods'] = methods
@@ -178,7 +174,6 @@ def _process_struct(struct_node, method_query, result):
         method_node = method_nodes_dict['method_def'][0]
         method_info = process_method_node(method_node)
         methods.append(method_info)
-        result.methods.append(method_info)
         
     if methods:
         struct_info['methods'] = methods
@@ -210,23 +205,6 @@ def _process_enum(enum_node):
     return {
         'name': enum_node.child_by_field_name('name').text.decode('utf8')
     }
-
-def _process_top_level_methods(tree, method_query, result):
-    """Process top-level methods (not inside classes/structs).
-    
-    Args:
-        tree: The parsed syntax tree
-        method_query: The method query object
-        result: The C_Sharp_Result object to populate
-    """
-    for _, method_node_dict in method_query.matches(tree.root_node):
-        method_node = method_node_dict['method_def'][0]
-        if method_node.parent and method_node.parent.type in ('class_declaration', 'struct_declaration'):
-            continue
-            
-        method_info = process_method_node(method_node)
-        if method_info:
-            result.methods.append(method_info)
 
 def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Result:
     """Extract types and members from a C# source file.
@@ -279,9 +257,6 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
         enum_node = enum_node_dict['enum_def'][0]
         enum_info = _process_enum(enum_node)
         result.enums.append(enum_info)
-    
-    # Process top-level methods
-    _process_top_level_methods(tree, method_query, result)
     
     return result
 
