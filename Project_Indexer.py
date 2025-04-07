@@ -1,58 +1,57 @@
 import os
-import re
 import json
+import argparse
+from parser.parser import extract_types_and_members_from_file_for_csharp, extract_types_and_members_from_file_for_python
 
-# Regex patterns for different type and member definitions in C# files
-patterns = {
-    'classes': re.compile(r'\bclass\s+(\w+)'),
-    'structs': re.compile(r'\bstruct\s+(\w+)'),
-    'interfaces': re.compile(r'\binterface\s+(\w+)'),
-    'enums': re.compile(r'\benum\s+(\w+)'),
-    # Regex for methods: matches common C# method definitions with access modifier, return type, and parameters.
-    'methods': re.compile(r'\b(?:public|private|protected|internal)\s+(?:static\s+)?(?:[\w\<\>\[\]]+\s+)+(\w+)\s*\([^)]*\)\s*(?:\{|=>)')
-}
-
-def extract_types_and_members_from_file(file_path):
-    """
-    Extracts classes, structs, interfaces, enums, and methods from a file.
-    Returns a dictionary with lists for each type and member found.
-    """
-    results = {
-        'classes': [],
-        'structs': [],
-        'interfaces': [],
-        'enums': [],
-        'methods': []
-    }
-    with open(file_path, 'r', encoding='utf-8') as file:
-        content = file.read()
-        for key, pattern in patterns.items():
-            matches = pattern.findall(content)
-            if matches:
-                results[key] = matches
-    return results
-
-def index_project_structure(root_dir):
+def index_project_structure(root_dir: str, extract_imports: bool = False):
     """
     Walks through the directory tree starting at root_dir.
-    Extracts type definitions and members from each C# file and creates a structured index.
+    Extracts type definitions and members from each C# or Python file and creates a structured index.
     """
     project_index = {}
+    print(f"Indexing project structure starting at: {root_dir}")
+    # Walk through the directory tree
     for subdir, _, files in os.walk(root_dir):
         for file in files:
+            # Process only C# and Python files
+            if not file.endswith('.cs') and not file.endswith('.py'):
+                print(f"Skipping non-C# or non-Python file: {file}")
+                continue
+            # Construct the full file path and relative path
+            file_path = os.path.join(subdir, file)
+            relative_path = os.path.relpath(file_path, root_dir)
             if file.endswith('.cs'):
-                file_path = os.path.join(subdir, file)
-                relative_path = os.path.relpath(file_path, root_dir)
-                details = extract_types_and_members_from_file(file_path)
-                # Include in the index only if any type or member was found
-                if any(details.values()):
-                    project_index[relative_path] = details
+                # Extract C# types and members
+                details = extract_types_and_members_from_file_for_csharp(file_path)
+            elif file.endswith('.py'):
+                # Extract Python types and members
+                details = extract_types_and_members_from_file_for_python(file_path, extract_imports)
+            # Include in the index only if any type or member was found
+            project_index_details = details.__to_dict__()
+            if any(project_index_details.values()):
+                project_index[relative_path] = project_index_details
     return project_index
 
 if __name__ == "__main__":
-    # Adjust this path as needed to point to your project directory.
-    root_directory = "C:\\MyRepos\\GitHub\\SomeFolder\\ProjectRoot"
-    index = index_project_structure(root_directory)
+    # Specify pwd as default root directory and argument --path if provided
+    root_directory = os.getcwd()  # Default to current working directory
+    # Check if a path argument is provided 
+    parser = argparse.ArgumentParser(description='Index project structure for C# and Python files.')
+    parser.add_argument('--path', type=str, help='Path to the project directory to index')
+    parser.add_argument('--imports', action='store_true', help='Extract imports from Python files', default=False)
+    args = parser.parse_args()
+    if args.path:
+        root_directory = args.path
+    # Check if the provided path exists
+    if not os.path.exists(root_directory):
+        print(f"Provided path does not exist: {root_directory}")
+        exit(1)
+    # Check if the provided path is a directory
+    if not os.path.isdir(root_directory):
+        print(f"Provided path is not a directory: {root_directory}")
+        exit(1)
+    # Index the project structure starting at the specified root directory  
+    index = index_project_structure(root_directory, args.imports)
     # Export file renamed to ProjectIndex.json
     export_filename = 'ProjectIndex.json'
     with open(export_filename, 'w', encoding='utf-8') as index_file:
