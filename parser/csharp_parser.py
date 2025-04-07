@@ -8,7 +8,7 @@ class C_Sharp_Result:
         self.structs = []
         self.interfaces = []
         self.enums = []
-        self.methods = []
+        self.methods = []  # Flat list for backward compatibility
         
     def __to_dict__(self):
         result = {}
@@ -18,21 +18,54 @@ class C_Sharp_Result:
             result['structs'] = self.structs
         if self.interfaces:
             result['interfaces'] = self.interfaces
-        if self.enums:    
+        if self.enums:
             result['enums'] = self.enums
         if self.methods:
-            result['methods'] = self.methods
+            result['methods'] = self.methods  # Maintain flat list
         return result
+    
+    
+def process_method_node(method_node):
+    if not method_node:
+        return None
+        
+    method_info = {}
+    # Get method name
+    method_info['name'] = method_node.child_by_field_name('name').text.decode('utf8')
+    # Get parameters
+    raw_parameters = method_node.child_by_field_name('parameters')
+    parameters = ','.join([p.text.decode('utf8') for p in raw_parameters.children if p.type == 'parameter'])
+    if len(parameters) > 0:
+        print(f"Parameters: {parameters}")
+        method_info['parameters'] = parameters
+    # Get return type
+    type = method_node.child_by_field_name('type')
+    if type:
+        method_info['return_type'] = type.text.decode('utf8')
+    # Get modifiers
+    modifiers_node = method_node.child_by_field_name('modifiers')
+    if modifiers_node:
+        method_info['modifiers'] = [m.text.decode('utf8') for m in modifiers_node.children]
+    return method_info
 
 def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Result:
     result = C_Sharp_Result()
     
-    if not file_path.endswith('.cs'):
+    # File reading operations
+    try:
+        if not file_path.endswith('.cs'):
+            return result
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            source_code = f.read()
+            
+        if not source_code:
+            return result
+            
+    except Exception as e:
+        print(f"Error reading file {file_path}: {str(e)}")
         return result
-
-    with open(file_path, 'r', encoding='utf-8') as f:
-        source_code = f.read()
-
+    
     # Initialize Tree-sitter parser
     parser = Parser(language=CSHARP_LANGUAGE)
     tree = parser.parse(bytes(source_code, 'utf8'))
@@ -71,14 +104,14 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
             name: (identifier) @method_name
             (parameter_list) @params
             body: (block)? @method_body) @method_def
-    """).matches(tree.root_node)
+    """)
 
     # Process classes
     for index, class_nodes_dict in CLASS_QUERY:
         # has attributes class_name, bases, class_body, class_def
-        class_node = class_nodes_dict['class_def']
+        class_node = class_nodes_dict['class_def'][0]
         class_info = {
-            'name': class_node[0].child_by_field_name('name').text.decode('utf8')
+            'name': class_node.child_by_field_name('name').text.decode('utf8')
         }
         
         # Get base classes/interfaces
@@ -88,16 +121,41 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
             bases = [b.text.decode('utf8') for b in bases_node[0].children if b.type != ':']
             class_info['bases'] = "".join(bases)
         
+        # Process methods within class
+        methods = []
+        body_node = class_node.child_by_field_name('body')
+        method_matches = list(METHOD_QUERY.matches(body_node))
+        for method_index, method_nodes_dict in method_matches:
+            method_node = method_nodes_dict['method_def'][0]
+            method_info = process_method_node(method_node)
+            methods.append(method_info)
+            result.methods.append(method_info)  # Maintain flat list
+            
+        if methods:
+            class_info['methods'] = methods
+            
         result.classes.append(class_info)
-
     # Process structs
     for index, struct_node_dict in STRUCT_QUERY:
         # has attributes struct_name, bases, struct_body
-        struct_node = struct_node_dict['struct_def']
-        # Get struct name
+        struct_node = struct_node_dict['struct_def'][0]
         struct_info = {
-            'name': struct_node[0].child_by_field_name('name').text.decode('utf8')
+            'name': struct_node.child_by_field_name('name').text.decode('utf8')
         }
+        
+        # Process methods within struct
+        methods = []
+        body_node = struct_node.child_by_field_name('body')
+        method_matches = METHOD_QUERY.matches(body_node)
+        for method_index, method_nodes_dict in method_matches:
+            method_node = method_nodes_dict['method_def'][0]
+            method_info = process_method_node(method_node)
+            methods.append(method_info)
+            result.methods.append(method_info)  # Maintain flat list
+            
+        if methods:
+            struct_info['methods'] = methods
+            
         result.structs.append(struct_info)
 
     # Process interfaces
@@ -120,33 +178,16 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
         }
         result.enums.append(enum_info)
 
-    # Process methods
-    for index, method_node_dict in METHOD_QUERY:
-        # has attributes method_name, params, return_type, method_body
+    # Process top-level methods
+    for index, method_node_dict in METHOD_QUERY.matches(tree.root_node):
         method_node = method_node_dict['method_def'][0]
-        if not method_node:
+        # Skip if method is inside a class or struct
+        if method_node.parent and method_node.parent.type in ('class_declaration', 'struct_declaration'):
             continue
-        # Get method name and parameters
-        type = method_node.child_by_field_name('type')
-        parameters = method_node.child_by_field_name('parameter_list')
-        
-        method_info = {}
-        # Get method name
-        method_info['name'] = method_node.child_by_field_name('name').text.decode('utf8')
-        # Get parameters
-        parameters = method_node.child_by_field_name('parameter_list')
-        if parameters:
-            method_info['parameters'] = [p.text.decode('utf8') for p in parameters.children if p.type == 'parameter']
-        # Get return type
-        type = method_node.child_by_field_name('type')
-        if type:
-            method_info['return_type'] = type.text.decode('utf8')          
-        # Get modifiers
-        modifiers_node = method_node.child_by_field_name('modifiers')
-        if modifiers_node:
-            method_info['modifiers'] = [m.text.decode('utf8') for m in modifiers_node.children]
-        
-        result.methods.append(method_info)
+            
+        method_info = process_method_node(method_node)
+        if method_info:
+            result.methods.append(method_info)
 
     return result
 
