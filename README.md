@@ -16,6 +16,7 @@ The tool currently supports both C# and Python files, with specialized regex pat
   - Imports (absolute and relative)
   - Docstrings (as metadata)
 
+
 ## Why Use ProjectIndexer?
 
 - **Reduces unnecessary LLM scanning**: Saves token usage compared to constant back-and-forth querying.
