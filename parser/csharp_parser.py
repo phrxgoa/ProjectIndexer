@@ -36,7 +36,6 @@ def process_method_node(method_node):
     raw_parameters = method_node.child_by_field_name('parameters')
     parameters = ','.join([p.text.decode('utf8') for p in raw_parameters.children if p.type == 'parameter'])
     if len(parameters) > 0:
-        print(f"Parameters: {parameters}")
         method_info['parameters'] = parameters
     # Get return type
     type = method_node.child_by_field_name('type')
