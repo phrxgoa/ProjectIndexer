@@ -1,4 +1,6 @@
-import ast
+import os
+from tree_sitter import Parser, Query
+from . import PYTHON_LANGUAGE
 
 class Python_Result:
     def __init__(self):
@@ -6,9 +8,7 @@ class Python_Result:
         self.py_functions = []
         self.py_imports = []
 
-    # Convert the result to a dictionary for easy serialization
     def __to_dict__(self):
-        # Convert each list of objects to a dictionary but on
         result = {}
         if self.py_classes:
             result['py_classes'] = self.py_classes
@@ -18,84 +18,111 @@ class Python_Result:
             result['py_imports'] = self.py_imports
         return result
 
-def extract_arg(arg):
-    type_annotation = "" if not arg.annotation else f": {ast.unparse(arg.annotation)}"
-    return f"{arg.arg}{type_annotation}"
-
-def extract_func_info(node, parent_class=None):
-    # create string like "func_name(self, arg1: type, arg2: type) -> return_type"
-    function_signature = f"{node.name}({','.join([extract_arg(arg) for arg in node.args.args])}) -> {ast.unparse(node.returns) if node.returns else 'None'}"
-    return function_signature
-
-def extract_class_info(class_node):
-    result = {}
-    if class_node.name:
-        result['name'] = class_node.name
-    if class_node.bases:
-        result['bases'] = [ast.unparse(base) for base in class_node.bases]
-    # Extract methods from the class body
-    methods = [
-            extract_func_info(item, parent_class=class_node.name)
-            for item in class_node.body
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef))
-        ]
-    # Add methods to the result
-    if methods:
-        result['methods'] = methods
-    return result
-
 def extract_types_and_members_from_file_for_python(file_path: str, extract_imports: bool = False) -> Python_Result:
     result = Python_Result()
     
-    # Ignore non-Python files
-    if not file_path.endswith('.py'):
+    # Ignore non-Python files and test files
+    if not file_path.endswith('.py') or 'venv' in file_path or '__pycache__' in file_path:
         return result
-    # Ignore venv and __pycache__ directories
-    if 'venv' in file_path or '__pycache__' in file_path:
+    if '_test.py' in file_path or 'test_' in file_path:
         return result
-    # Ignore files starting with test_ or ending with _test.py
-    if file_path.__contains__('_test.py') or file_path.__contains__('test_'):
-        return result
-    # Read the file and parse the AST
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            source_code = f.read()
 
-        tree = ast.parse(source_code, filename=file_path)
 
-        for node in ast.iter_child_nodes(tree):
-            # Imports
-            if extract_imports and isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.asname:
-                        result.py_imports.append(f"{alias.name} as {alias.asname}")
-                    else:
-                        result.py_imports.append(alias.name)
+    with open(file_path, 'r', encoding='utf-8') as f:
+        source_code = f.read()
+        
+    # Initialize Tree-sitter parser
+    parser = Parser(language=PYTHON_LANGUAGE)
+    tree = parser.parse(bytes(source_code, 'utf8'))
 
-            elif extract_imports and isinstance(node, ast.ImportFrom):
-                # aggregate all imports from the same module
-                imported_names = ",".join([alias.name for alias in node.names])
-                result.py_imports.append(f"from {node.module} import {imported_names}")
+    # Tree-sitter queries
+    CLASS_QUERY = Query(PYTHON_LANGUAGE, """
+        (class_definition
+            name: (identifier) @class_name
+            body: (block) @class_body) @class_def
+    """)
 
-            # Classes and Methods
-            elif isinstance(node, ast.ClassDef):
-                class_info = extract_class_info(node)
-                result.py_classes.append(class_info)
+    FUNCTION_QUERY = Query(PYTHON_LANGUAGE, """
+        (function_definition
+            name: (identifier) @function_name
+            parameters: (parameters) @params
+            return_type: (type)? @return_type
+            body: (block) @function_body) @function_def
+    """)
 
-            # Top-level functions
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                func_info = extract_func_info(node)
-                result.py_functions.append(func_info)
+    IMPORT_QUERY = Query(PYTHON_LANGUAGE, """
+        (import_statement) @import
+        (import_from_statement) @import_from
+    """)
 
-        return result
-    except SyntaxError as e:
-        print(f"Syntax error in file {file_path}: {e}")
-        return result
-    except Exception as e:
-        print(f"Error processing file {file_path}: {e}")
-        return result
-    finally:
-        # Close the file if it was opened
-        if 'f' in locals():
-            f.close()
-        pass
+    # Process classes
+    for index, class_nodes_dict in CLASS_QUERY.matches(tree.root_node):
+        class_node = class_nodes_dict['class_def'][0]
+        class_info = {
+            'name': class_node.child_by_field_name('name').text.decode('utf8')
+        }
+        
+        # Get base classes
+        bases_node = class_nodes_dict.get('bases', [None])[0]
+        if bases_node:
+            class_info['bases'] = [b.text.decode('utf8') for b in bases_node.children if b.type != '(' and b.type != ')']
+        
+        # Get methods
+        methods = []
+        body_node = class_node.child_by_field_name('body')
+        for method_index, method_nodes_dict in FUNCTION_QUERY.matches(body_node):
+            method_node = method_nodes_dict['function_def'][0]
+            method_name = method_node.child_by_field_name('name').text.decode('utf8')
+            params = method_node.child_by_field_name('parameters').text.decode('utf8')
+            return_type = method_node.child_by_field_name('return_type')
+            return_type_str = f" -> {return_type.text.decode('utf8')}" if return_type else " -> None"
+            
+            # Get decorators
+            decorators = []
+            if method_node.prev_named_sibling and method_node.prev_named_sibling.type == 'decorator':
+                decorator_node = method_node.prev_named_sibling
+                while decorator_node and decorator_node.type == 'decorator':
+                    decorators.append(decorator_node.text.decode('utf8'))
+                    decorator_node = decorator_node.prev_named_sibling
+            
+            method_sig = f"{' '.join(reversed(decorators))} {method_name}{params}{return_type_str}"
+            methods.append(method_sig.strip())
+        
+        if methods:
+            class_info['methods'] = methods
+        
+        result.py_classes.append(class_info)
+
+    # Process top-level functions
+    for index, function_nodes_dict in FUNCTION_QUERY.matches(tree.root_node):
+        # Skip if the function is inside a class
+        if 'class_def' in function_nodes_dict:
+            continue
+        function_node = function_nodes_dict['function_def'][0]
+        if function_node.parent and function_node.parent.type == 'class_definition':
+            continue
+            
+        func_name = function_node.child_by_field_name('name').text.decode('utf8')
+        params = function_node.child_by_field_name('parameters').text.decode('utf8')
+        return_type = function_node.child_by_field_name('return_type')
+        return_type_str = f" -> {return_type.text.decode('utf8')}" if return_type else " -> None"
+        
+        # Get decorators
+        decorators = []
+        if function_node.prev_named_sibling and function_node.prev_named_sibling.type == 'decorator':
+            decorator_node = function_node.prev_named_sibling
+            while decorator_node and decorator_node.type == 'decorator':
+                decorators.append(decorator_node.text.decode('utf8'))
+                decorator_node = decorator_node.prev_named_sibling
+        
+        func_sig = f"{' '.join(reversed(decorators))} {func_name}{params}{return_type_str}"
+        result.py_functions.append(func_sig.strip())
+
+    # Process imports if requested
+    if extract_imports:
+        for index, import_nodes_dict in IMPORT_QUERY.matches(tree.root_node):
+            import_node = list(import_nodes_dict.values())[0][0]
+            import_text = import_node.text.decode('utf8')
+            result.py_imports.append(import_text)
+
+    return result

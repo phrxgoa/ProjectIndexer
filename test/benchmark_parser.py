@@ -1,4 +1,3 @@
-import timeit
 import time
 from parser.csharp_parser import extract_types_and_members_from_file_for_csharp as tree_sitter_parse
 from parser.csharp_parser import C_Sharp_Result as TreeSitterResult
@@ -54,7 +53,7 @@ def benchmark_parser(parser_func, file_path: str, iterations: int = 100):
     }
 
 if __name__ == '__main__':
-    test_file = 'test.cs'
+    test_file = 'resources/test.cs'
     iterations = 100
     
     print("Benchmarking Tree-sitter parser...")

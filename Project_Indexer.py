@@ -26,7 +26,6 @@ def index_project_structure(root_dir: str, extract_imports: bool = False):
             elif file.endswith('.py'):
                 # Extract Python types and members
                 details = extract_types_and_members_from_file_for_python(file_path, extract_imports)
-            print(f"Extracted details from {file}: {details}")
             # Include in the index only if any type or member was found
             project_index_details = details.__to_dict__()
             if any(project_index_details.values()):

@@ -1,6 +1,6 @@
 import os
-from tree_sitter import Language, Parser, Query
-import tree_sitter_c_sharp
+from tree_sitter import Parser, Query
+from . import CSHARP_LANGUAGE
 
 class C_Sharp_Result:
     def __init__(self):
@@ -9,23 +9,20 @@ class C_Sharp_Result:
         self.interfaces = []
         self.enums = []
         self.methods = []
-        self.properties = []
-        self.fields = []
         
     def __to_dict__(self):
-        return {
-            'classes': self.classes,
-            'structs': self.structs,
-            'interfaces': self.interfaces,
-            'enums': self.enums,
-            'methods': self.methods,
-            'properties': self.properties,
-            'fields': self.fields
-        }
-
-def get_csharp_language():
-    language_capsule = tree_sitter_c_sharp.language()
-    return Language(language_capsule)
+        result = {}
+        if self.classes:
+            result['classes'] = self.classes
+        if self.structs:
+            result['structs'] = self.structs
+        if self.interfaces:
+            result['interfaces'] = self.interfaces
+        if self.enums:    
+            result['enums'] = self.enums
+        if self.methods:
+            result['methods'] = self.methods
+        return result
 
 def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Result:
     result = C_Sharp_Result()
@@ -36,7 +33,6 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
     with open(file_path, 'r', encoding='utf-8') as f:
         source_code = f.read()
 
-    CSHARP_LANGUAGE = get_csharp_language()
     # Initialize Tree-sitter parser
     parser = Parser(language=CSHARP_LANGUAGE)
     tree = parser.parse(bytes(source_code, 'utf8'))
@@ -88,7 +84,9 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
         # Get base classes/interfaces
         bases_node = class_nodes_dict.get('bases', None)
         if bases_node:
-            class_info['bases'] = [b.text.decode('utf8') for b in bases_node[0].children if b.type != ':']
+            # add concatenated bases
+            bases = [b.text.decode('utf8') for b in bases_node[0].children if b.type != ':']
+            class_info['bases'] = "".join(bases)
         
         result.classes.append(class_info)
 
@@ -131,13 +129,18 @@ def extract_types_and_members_from_file_for_csharp(file_path: str) -> C_Sharp_Re
         # Get method name and parameters
         type = method_node.child_by_field_name('type')
         parameters = method_node.child_by_field_name('parameter_list')
-            
-        method_info = {
-            'name': method_node.child_by_field_name('name').text.decode('utf8'),
-            'return_type': type.text.decode('utf8') if type else None,
-            'parameters': parameters.text.decode('utf8') if parameters else None
-        }
         
+        method_info = {}
+        # Get method name
+        method_info['name'] = method_node.child_by_field_name('name').text.decode('utf8')
+        # Get parameters
+        parameters = method_node.child_by_field_name('parameter_list')
+        if parameters:
+            method_info['parameters'] = [p.text.decode('utf8') for p in parameters.children if p.type == 'parameter']
+        # Get return type
+        type = method_node.child_by_field_name('type')
+        if type:
+            method_info['return_type'] = type.text.decode('utf8')          
         # Get modifiers
         modifiers_node = method_node.child_by_field_name('modifiers')
         if modifiers_node:

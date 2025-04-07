@@ -34,6 +34,7 @@ The tool currently supports both C# and Python files, with specialized regex pat
 
 - **Creates** a **.json file** listing class names, methods and locations
 - **Multi-language support**: Works with both C# and Python codebases
+- **Tree-sitter parsing**: More accurate than regex for complex syntax cases
 - **Lightweight**: Only indexes names and locations, not full class properties or implementations
 - **Supports integration with RooCode**: In some cases, you can configure `Code/Architect` mode to frequently refer to `ProjectIndex.json`. You may also set it to **run periodically** upon reaching milestones or creating new tasks
 
@@ -41,17 +42,32 @@ The tool currently supports both C# and Python files, with specialized regex pat
 
 ## Parser Architecture
 
-The project uses a modular parser system:
+The project uses a modular parser system with Tree-sitter for accurate syntax parsing:
 
-- `parser/__init__.py`: Main parser interface
-- `parser/csharp_parser.py`: Handles C# specific parsing
-- `parser/python_parser.py`: Handles Python specific parsing
+- `parser/__init__.py`: Main parser interface and Tree-sitter grammar initialization
+- `parser/csharp_parser.py`: Handles C# specific parsing using Tree-sitter
+- `parser/python_parser.py`: Handles Python specific parsing using Tree-sitter
 
 Each parser implements:
 
 - File extension detection
-- Language-specific regex patterns
+- Tree-sitter based parsing with language grammars
 - Common output format (JSON)
+
+### Tree-sitter Integration
+
+The project now uses [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) for more accurate parsing:
+
+- **Pre-loaded grammars** for Python and C# at startup
+- **Faster parsing** by avoiding regex pattern matching
+- **More reliable** extraction of code structures
+- **Better handling** of complex syntax cases
+
+Required dependencies (automatically installed via requirements.txt):
+
+- tree-sitter==0.24.0
+- tree-sitter-python==0.23.6
+- tree-sitter-c-sharp==0.23.1
 
 ## Installation & Usage
 
