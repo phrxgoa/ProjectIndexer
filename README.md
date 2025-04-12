@@ -96,14 +96,17 @@ python Project_Indexer.py
 
 4.  Direct your LLM to read `ProjectIndex.json` for efficient project awareness.
 
-## cSharp Project Indexer
+## C# Project Indexer
 
-1. This is a Highly Specilised indexer for C# files ONLY, it also Reads and Index .razor files for Blazor Projects.
-2. It uses the PYTHONNET Libary to interface with the Rosylin Anylizers to 'Walk the Tree', resulting in a Highly compressed ProjectIndex.json file.
-3. Drop in Root of Project
-4. ```python cSharpIndexer.py ``` will create ProjectIndex.json
-5. If Roslyn Dependancys do not Exist, you may have to install them, although the script will attempt to do this for you.
-6. PRs or updates Welcome, as this is Highly Experimental. 
+1. This is a highly specialized indexer for **C# files only**. It also reads and indexes `.razor` files for Blazor projects.
+2. It uses the **PythonNET** library to interface with **Roslyn analyzers** to "walk the tree," resulting in a highly compressed `ProjectIndex.json` file.
+3. Place the script in the **root directory** of your project.
+4. Run the following command to generate the index:
+   ```python cSharpIndexer.py ```
+5. If Roslyn dependencies are missing, the script will attempt to install them automatically. Manual installation may be required in some cases.
+6. Pull requests and contributions are welcome — this tool is highly experimental.
+
+
 
 I hope this is useful.
 
