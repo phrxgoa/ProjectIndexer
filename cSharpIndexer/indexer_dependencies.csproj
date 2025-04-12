@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework> <!-- Use a recent stable TFM, net8.0 is good -->
+    <!-- This project doesn't produce output, it's just for dependencies -->
+    <NoBuild>true</NoBuild>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnableDefaultItems>false</EnableDefaultItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference the C# Roslyn package. Use a specific version known to work well. -->
+    <!-- Check https://www.nuget.org/packages/Microsoft.CodeAnalysis.CSharp for latest versions -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <!-- This transitively includes Microsoft.CodeAnalysis -->
+  </ItemGroup>
+
+</Project>
