@@ -86,6 +86,18 @@ def process_method_node(method_node):
         method_info['modifiers'] = [m.text.decode('utf8') for m in modifiers_node.children]
     return method_info
 
+def _should_skip_file(file_path: str) -> bool:
+    """Check if the file should be skipped based on its extension.
+
+    Args:
+        file_path: Path to the file
+
+    Returns:
+        bool: True if the file should be skipped, False otherwise
+    """
+    file_extension_supported = file_path.endswith(".cs") or file_path.endswith(".h")
+    return not file_extension_supported or 'node_modules' in file_path or 'dist' in file_path or 'build' in file_path
+
 def _read_and_validate_file(file_path: str) -> str:
     """Read and validate a C# source file.
     
@@ -96,7 +108,7 @@ def _read_and_validate_file(file_path: str) -> str:
         str: The file content if valid, None otherwise
     """
     try:
-        if not file_path.endswith('.cs'):
+        if _should_skip_file(file_path):
             return None
 
         with open(file_path, 'r', encoding='utf-8') as f:

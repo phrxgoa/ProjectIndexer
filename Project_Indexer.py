@@ -1,6 +1,8 @@
 import os
 import json
 import argparse
+
+from parser import extract_types_and_members_from_file_for_typescript
 from parser.parser import extract_types_and_members_from_file_for_csharp, extract_types_and_members_from_file_for_python
 
 def index_project_structure(root_dir: str, extract_imports: bool = False):
@@ -14,8 +16,8 @@ def index_project_structure(root_dir: str, extract_imports: bool = False):
     for subdir, _, files in os.walk(root_dir):
         for file in files:
             # Process only C# and Python files
-            if not file.endswith('.cs') and not file.endswith('.py'):
-                print(f"Skipping non-C# or non-Python file: {file}")
+            if not file.endswith('.cs') and not file.endswith('.py') and not file.endswith('.tsx') and not file.endswith('.ts'):
+                print(f"Skipping non-C# or non-Python file or non-Typescript: {file}")
                 continue
             # Construct the full file path and relative path
             file_path = os.path.join(subdir, file)
@@ -26,6 +28,9 @@ def index_project_structure(root_dir: str, extract_imports: bool = False):
             elif file.endswith('.py'):
                 # Extract Python types and members
                 details = extract_types_and_members_from_file_for_python(file_path, extract_imports)
+            elif file.endswith('.tsx') or file.endswith('.ts'):
+                # Extract TypeScript types and members
+                details = extract_types_and_members_from_file_for_typescript(file_path)
             # Include in the index only if any type or member was found
             project_index_details = details.__to_dict__()
             if any(project_index_details.values()):
@@ -53,7 +58,7 @@ if __name__ == "__main__":
     # Index the project structure starting at the specified root directory  
     index = index_project_structure(root_directory, args.imports)
     # Export file renamed to ProjectIndex.json
-    export_filename = 'ProjectIndex.json'
+    export_filename = f"{root_directory}/ProjectIndex.json"
     with open(export_filename, 'w', encoding='utf-8') as index_file:
         json.dump(index, index_file, indent=4)
     print(f"Project structure indexed successfully and exported to {export_filename}.")

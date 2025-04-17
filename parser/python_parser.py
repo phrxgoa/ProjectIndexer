@@ -44,7 +44,8 @@ def _should_skip_file(file_path: str) -> bool:
             'venv' in file_path or 
             '__pycache__' in file_path or
             '_test.py' in file_path or 
-            'test_' in file_path)
+            'test_' in file_path or
+            'node_modules' in file_path)
 
 def _read_source_code(file_path: str) -> str:
     """Read and return the contents of a Python source file."""
