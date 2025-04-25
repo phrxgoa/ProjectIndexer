@@ -3,25 +3,29 @@ import json
 import argparse
 
 from parser import extract_types_and_members_from_file_for_typescript
-from parser.parser import extract_types_and_members_from_file_for_csharp, extract_types_and_members_from_file_for_python
+from parser.parser import extract_types_and_members_from_file_for_csharp, extract_types_and_members_from_file_for_python, extract_types_and_members_from_file_for_javascript
 
 def index_project_structure(root_dir: str, extract_imports: bool = False):
     """
     Walks through the directory tree starting at root_dir.
-    Extracts type definitions and members from each C# or Python file and creates a structured index.
+    Extracts type definitions and members from each file and creates a structured index.
     """
     project_index = {}
     print(f"Indexing project structure starting at: {root_dir}")
     # Walk through the directory tree
     for subdir, _, files in os.walk(root_dir):
         for file in files:
-            # Process only C# and Python files
-            if not file.endswith('.cs') and not file.endswith('.py') and not file.endswith('.tsx') and not file.endswith('.ts'):
-                print(f"Skipping non-C# or non-Python file or non-Typescript: {file}")
+            # Process only supported file types
+            if (not file.endswith('.cs') and not file.endswith('.py') and 
+                not file.endswith('.tsx') and not file.endswith('.ts') and 
+                not file.endswith('.js')):
+                print(f"Skipping unsupported file: {file}")
                 continue
+                
             # Construct the full file path and relative path
             file_path = os.path.join(subdir, file)
             relative_path = os.path.relpath(file_path, root_dir)
+            
             if file.endswith('.cs'):
                 # Extract C# types and members
                 details = extract_types_and_members_from_file_for_csharp(file_path)
@@ -31,10 +35,15 @@ def index_project_structure(root_dir: str, extract_imports: bool = False):
             elif file.endswith('.tsx') or file.endswith('.ts'):
                 # Extract TypeScript types and members
                 details = extract_types_and_members_from_file_for_typescript(file_path)
+            elif file.endswith('.js'):
+                # Extract JavaScript types and members
+                details = extract_types_and_members_from_file_for_javascript(file_path, extract_imports)
+                
             # Include in the index only if any type or member was found
             project_index_details = details.__to_dict__()
             if any(project_index_details.values()):
                 project_index[relative_path] = project_index_details
+                
     return project_index
 
 if __name__ == "__main__":
